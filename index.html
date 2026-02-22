@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>주식 RADAR</title>
+<style>
+:root{--bg:#090c12;--s1:#111722;--s2:#181f2e;--border:#1d2638;--up:#ff4560;--up-bg:rgba(255,69,96,.12);--acc:#00c8e8;--acc-bg:rgba(0,200,232,.1);--dn:#26de81;--gold:#ffd32a;--text:#cdd8ea;--dim:#47536a;--dim2:#252f42;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;overflow-x:hidden;}
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=IBM+Plex+Mono:wght@400;700&display=swap');
+
+/* HEADER */
+.hd{position:sticky;top:0;z-index:50;background:rgba(9,12,18,.96);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(12px);}
+.logo{font-weight:900;font-size:16px;letter-spacing:.5px;}<br>.logo em{color:var(--up);font-style:normal;}
+.api-dot{width:8px;height:8px;border-radius:50%;background:var(--dim);}
+.api-dot.ok{background:var(--dn);box-shadow:0 0 8px var(--dn);}
+
+/* TABS */
+.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--border);}
+.tab{flex:1;padding:10px 6px;font-size:12px;font-weight:700;text-align:center;color:var(--dim);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.tab.on{color:var(--up);border-bottom-color:var(--up);}
+
+/* MAIN */
+.main{padding:12px;}
+.page{display:none;}
+.page.on{display:block;}
+
+/* KEY BANNER */
+.key-banner{background:linear-gradient(135deg,rgba(255,69,96,.08),rgba(0,200,232,.06));border:1px solid rgba(255,69,96,.25);border-radius:10px;padding:13px;margin-bottom:11px;}
+.key-banner.hidden{display:none;}
+.key-title{font-size:12px;font-weight:700;color:var(--up);margin-bottom:9px;}
+.key-row{display:flex;gap:7px;}
+.key-inp{flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 10px;color:var(--text);outline:none;}
+.key-inp:focus{border-color:var(--acc);}
+.key-btn{font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;background:var(--up);color:#fff;border:none;border-radius:7px;padding:9px 16px;cursor:pointer;white-space:nowrap;}
+.key-hint{font-size:10px;color:var(--dim);margin-top:8px;line-height:1.7;}
+.key-link{color:var(--acc);}
+
+/* ACTION */
+.action{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;}
+.arow{display:flex;gap:7px;margin-bottom:7px;}
+.arow:last-child{margin-bottom:0;}
+.date-inp{flex:1;font-family:'IBM Plex Mono',monospace;font-size:13px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 10px;color:var(--text);outline:none;}
+.date-inp:focus{border-color:var(--acc);}
+.btn{font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;padding:9px 14px;border-radius:7px;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;min-height:40px;}
+.btn-up{background:var(--up);color:#fff;}
+.btn-up:active{background:#d83050;}
+.btn-acc{background:var(--acc-bg);color:var(--acc);border:1px solid rgba(0,200,232,.3);}
+.btn-ghost{background:var(--s2);color:var(--dim);border:1px solid var(--border);}
+.btn:disabled{opacity:.35;}
+.ameta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:center;margin-top:4px;}
+
+/* STATS */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.sbox{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px 12px;border-left:3px solid var(--border);}
+.sbox.r{border-left-color:var(--up);}
+.sbox.b{border-left-color:var(--acc);}
+.sbox.g{border-left-color:var(--dn);}
+.sbox.o{border-left-color:var(--gold);}
+.slbl{font-size:9px;font-weight:700;color:var(--dim);letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px;}
+.sval{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;}
+.sval.r{color:var(--up);}
+.sval.b{color:var(--acc);}
+.sval.g{color:var(--dn);}
+.sval.o{color:var(--gold);}
+.sval.sm{font-size:11px;color:var(--text);}
+
+/* SECTION */
+.sec{margin-bottom:10px;}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--s2);border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;}
+.sec-title{font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;}
+.badge{font-size:8px;font-weight:700;padding:2px 5px;border-radius:2px;letter-spacing:.4px;text-transform:uppercase;}
+.badge-r{background:var(--up-bg);color:var(--up);}
+.badge-b{background:var(--acc-bg);color:var(--acc);}
+.badge-g{background:rgba(38,222,129,.1);color:var(--dn);}
+.badge-p{background:rgba(165,94,234,.1);color:#b48be8;}
+.sec-meta{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);}
+
+/* STOCK LIST */
+.slist{background:var(--s1);border:1px solid var(--border);border-radius:0 0 10px 10px;overflow:hidden;}
+.sitem{display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.025);}
+.sitem:last-child{border-bottom:none;}
+.srk{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--dim2);width:20px;text-align:center;flex-shrink:0;}
+.srk.g1{color:var(--gold);}
+.srk.g2{color:#a0aab8;}
+.srk.g3{color:#8a6848;}
+.sinfo{flex:1;min-width:0;}
+.snm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.srs{font-size:10px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sright{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.srt{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:var(--up);}
+.srt.lim{color:#ff6b81;}
+.svl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--acc);}
+
+/* TAG */
+.tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 5px;border-radius:2px;white-space:nowrap;}
+.tag-증권{background:rgba(255,69,96,.12);color:#ff6b81;}
+.tag-제약바이오{background:rgba(38,222,129,.12);color:#69db7c;}
+.tag-반도체{background:rgba(0,200,232,.12);color:var(--acc);}
+.tag-우주항공{background:rgba(165,94,234,.12);color:#c084fc;}
+.tag-원전{background:rgba(255,211,42,.12);color:var(--gold);}
+.tag-sk그룹{background:rgba(255,69,96,.1);color:#ff8fa3;}
+.tag-지주사{background:rgba(120,130,150,.12);color:#9ca3af;}
+.tag-로봇{background:rgba(0,200,232,.1);color:#67e8f9;}
+.tag-방산{background:rgba(255,211,42,.1);color:var(--gold);}
+.tag-남북경협{background:rgba(100,180,255,.1);color:#93c5fd;}
+.tag-2차전지{background:rgba(38,222,129,.1);color:#86efac;}
+.tag-태양광{background:rgba(255,211,42,.08);color:#fde047;}
+.tag-자동차{background:rgba(255,159,67,.1);color:#fdba74;}
+.tag-통신{background:rgba(100,149,237,.1);color:#93b4f5;}
+.tag-개별이슈{background:rgba(100,110,130,.1);color:#6b7280;}
+.tag-def{background:rgba(80,90,110,.1);color:#6b7280;}
+
+/* KW */
+.kwlist{background:var(--s1);border:1px solid var(--border);border-radius:0 0 10px 10px;padding:10px 12px;}
+.kwrow{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.kwrow:last-child{margin-bottom:0;}
+.kwi{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim2);width:12px;text-align:right;flex-shrink:0;}
+.kwbg{flex:1;height:4px;background:var(--s2);border-radius:2px;overflow:hidden;}
+.kwfill{height:100%;border-radius:2px;background:var(--up);}
+.kwcnt{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);width:18px;text-align:right;flex-shrink:0;}
+.kwvol{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--acc);width:55px;text-align:right;flex-shrink:0;}
+
+/* CALENDAR */
+.calnav{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--s1);border:1px solid var(--border);border-radius:10px 10px 0 0;border-bottom:none;}
+.calbtn{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.calmonth{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;flex:1;text-align:center;}
+.calgrid-hd{display:grid;grid-template-columns:repeat(5,1fr);}
+.calhd{padding:7px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:var(--dim);background:var(--s2);border:1px solid var(--border);border-top:none;}
+.calhd.mon{color:var(--up);}
+.calhd.fri{color:var(--acc);}
+.calbody{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;}
+.calcell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:80px;padding:6px;background:var(--s1);}
+.calcell:nth-child(5n){border-right:none;}
+.calcell.empty{background:rgba(0,0,0,.25);}
+.calcell.has{border-top:2px solid var(--up);cursor:pointer;}
+.calcell.has:active{background:rgba(255,69,96,.04);}
+.cald{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--dim);margin-bottom:4px;}
+.calkwnm{font-size:9px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.calkwvl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--acc);}
+
+/* INPUT */
+.insec{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+.inshd{padding:10px 12px;background:var(--s2);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;}
+.initems{padding:8px;display:flex;flex-direction:column;gap:6px;}
+.initem{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px;}
+.inrow1{display:grid;grid-template-columns:48px 1fr 68px 68px;gap:5px;margin-bottom:5px;}
+.inrow2{display:grid;grid-template-columns:1fr 95px 28px;gap:5px;}
+.minp{font-family:'Noto Sans KR',sans-serif;font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 8px;color:var(--text);outline:none;width:100%;}
+.minp:focus{border-color:var(--acc);}
+.minp::placeholder{color:var(--dim2);font-size:11px;}
+.msel{font-family:'Noto Sans KR',sans-serif;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 3px;color:var(--text);outline:none;width:100%;}
+.mlbl{font-size:9px;color:var(--dim);margin-bottom:2px;}
+.rmbtn{background:none;border:1px solid var(--border);border-radius:5px;color:var(--dim);cursor:pointer;width:28px;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;}
+
+/* AI */
+.aibox{background:rgba(0,200,232,.05);border:1px solid rgba(0,200,232,.2);border-radius:10px;padding:20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.aitxt{font-size:12px;color:var(--acc);}
+.dots{display:flex;gap:5px;justify-content:center;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:bounce .8s ease-in-out infinite;}
+.dot:nth-child(2){animation-delay:.15s;}
+.dot:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-7px)}}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:flex-end;}
+.overlay.on{display:flex;}
+.sheet{background:var(--s1);border-radius:18px 18px 0 0;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;border-top:1px solid var(--border);}
+.sheet-hd{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:8px auto 0;}
+.sheet-title{font-size:14px;font-weight:700;}
+.sheet-x{background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;padding:4px;}
+.sheet-body{overflow-y:auto;padding:12px;flex:1;-webkit-overflow-scrolling:touch;}
+
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;gap:8px;}
+.eico{font-size:30px;}
+.emsg{font-size:13px;color:var(--dim);text-align:center;}
+.esub{font-size:11px;color:var(--dim2);text-align:center;}
+
+/* TOAST */
+.toast{position:fixed;bottom:16px;left:12px;right:12px;z-index:300;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;opacity:0;transition:opacity .2s;pointer-events:none;}
+.toast.ok{background:var(--dn);color:#000;}
+.toast.err{background:var(--up);color:#fff;}
+.toast.info{background:var(--acc);color:#000;}
+.toast.show{opacity:1;}
+
+/* SETTINGS */
+.setsec{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+.sethd{padding:10px 12px;background:var(--s2);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;}
+.setbody{padding:12px;display:flex;flex-direction:column;gap:10px;}
+.setlbl{font-size:10px;color:var(--dim);margin-bottom:3px;letter-spacing:.3px;}
+.sethint{font-size:11px;color:var(--dim);line-height:1.8;}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="logo"><em>주식</em>RADAR 📡</div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)" id="clock"></div>
+    <div class="api-dot" id="apiDot"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" onclick="goTab('daily',this)">📅 일간</button>
+  <button class="tab" onclick="goTab('monthly',this)">📆 월간</button>
+  <button class="tab" onclick="goTab('input',this)">✏️ 입력</button>
+  <button class="tab" onclick="goTab('settings',this)">⚙️ 설정</button>
+</div>
+
+<div class="main">
+
+<!-- 일간 -->
+<div id="page-daily" class="page on">
+  <div class="key-banner" id="keyBanner">
+    <div class="key-title">⚡ Claude API 키 입력 (최초 1회)</div>
+    <div class="key-row">
+      <input class="key-inp" id="keyInp" type="password" placeholder="sk-ant-api03-...">
+      <button class="key-btn" onclick="saveKey()">저장</button>
+    </div>
+    <div class="key-hint">
+      👉 <a class="key-link" href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → 구글 회원가입 → API Keys → Create Key<br>
+      🔒 키는 이 기기에만 저장 · 하루 1회 수집 시 월 약 500원
+    </div>
+  </div>
+
+  <div class="action">
+    <div class="arow">
+      <input type="date" class="date-inp" id="collectDate">
+      <button class="btn btn-up" id="btnAI" onclick="aiCollect()">🤖 AI수집</button>
+    </div>
+    <div class="arow">
+      <input type="date" class="date-inp" id="viewDate" onchange="loadView()">
+      <button class="btn btn-acc" onclick="loadView()">조회</button>
+      <button class="btn btn-ghost" onclick="deleteDay()">🗑</button>
+    </div>
+    <div class="ameta" id="ameta">날짜 선택 후 AI수집 버튼을 누르세요</div>
+  </div>
+  <div id="dailyContent">
+    <div class="empty"><div class="eico">📡</div><div class="emsg">날짜를 선택하고<br>AI수집을 눌러주세요</div></div>
+  </div>
+</div>
+
+<!-- 월간 -->
+<div id="page-monthly" class="page">
+  <div style="margin-bottom:10px;">
+    <div class="calnav">
+      <button class="calbtn" onclick="chMonth(-1)">‹</button>
+      <div class="calmonth" id="calMonth"></div>
+      <button class="calbtn" onclick="chMonth(1)">›</button>
+    </div>
+    <div class="calgrid-hd">
+      <div class="calhd mon">월</div><div class="calhd">화</div><div class="calhd">수</div><div class="calhd">목</div><div class="calhd fri">금</div>
+    </div>
+    <div class="calbody" id="calBody"></div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><div class="sec-title">🏷️ 월간 키워드 <span class="badge badge-p">MONTHLY</span></div></div>
+    <div class="kwlist" id="kwMonthly"></div>
+  </div>
+</div>
+
+<!-- 수동입력 -->
+<div id="page-input" class="page">
+  <div style="display:flex;gap:8px;margin-bottom:10px;">
+    <input type="date" class="date-inp" id="manDate" style="flex:1;">
+    <button class="btn btn-ghost" onclick="loadSample()" style="font-size:11px;">샘플</button>
+  </div>
+  <div class="insec">
+    <div class="inshd"><span style="color:var(--up)">▲ 상승률 TOP</span><button onclick="addRow('rise')" style="font-size:11px;background:none;border:none;color:var(--acc);font-weight:700;cursor:pointer;">+ 추가</button></div>
+    <div class="initems" id="riseItems"></div>
+  </div>
+  <div class="insec">
+    <div class="inshd"><span style="color:var(--acc)">● 거래대금</span><button onclick="addRow('vol')" style="font-size:11px;background:none;border:none;color:var(--acc);font-weight:700;cursor:pointer;">+ 추가</button></div>
+    <div class="initems" id="volItems"></div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn btn-up" style="flex:1;" onclick="saveManual()">💾 저장</button>
+    <button class="btn btn-ghost" onclick="clearManual()">초기화</button>
+  </div>
+</div>
+
+<!-- 설정 -->
+<div id="page-settings" class="page">
+  <div class="setsec">
+    <div class="sethd">⚙️ API 키 설정</div>
+    <div class="setbody">
+      <div><div class="setlbl">Claude API Key</div><input class="minp" id="setKey" type="password" placeholder="sk-ant-api03-..."></div>
+      <button class="btn btn-up" style="width:100%;justify-content:center;" onclick="saveKeySet()">저장</button>
+      <div class="sethint">
+        📌 키 발급 방법:<br>
+        1. <a href="https://console.anthropic.com" target="_blank" style="color:var(--acc);">console.anthropic.com</a> 접속<br>
+        2. 구글로 회원가입<br>
+        3. 왼쪽 메뉴 "API Keys" 클릭<br>
+        4. "Create Key" 버튼 클릭<br>
+        5. 생성된 키 복사 후 위에 붙여넣기
+      </div>
+    </div>
+  </div>
+  <div class="setsec">
+    <div class="sethd">📊 저장 데이터</div>
+    <div class="setbody">
+      <div class="sethint" id="dataInfo"></div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;" onclick="exportJSON()">📤 JSON 내보내기</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;color:var(--up);border-color:var(--up)" onclick="clearAll()">🗑 전체 삭제</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- 바텀시트 모달 -->
+<div class="overlay" id="overlay" onclick="closeSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hd">
+      <div class="sheet-title" id="sheetTitle"></div>
+      <button class="sheet-x" onclick="closeSheet()">✕</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────
+const DB='sr3'; let db={};
+try{db=JSON.parse(localStorage.getItem(DB))||{};}catch{db={};}
+function save(){try{localStorage.setItem(DB,JSON.stringify(db));}catch{toast('저장 실패','err');}}
+function getK(){return localStorage.getItem('sr_k')||'';}
+let cm=new Date(),rC=0,vC=0;
+
+// ── INIT ──────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  const t=toStr(new Date());
+  ['collectDate','viewDate','manDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=t;});
+  setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('ko',{hour:'2-digit',minute:'2-digit'});},1000);
+  initKey(); addRow('rise'); addRow('vol'); loadView();
+});
+
+function pad(n){return String(n).padStart(2,'0');}
+function toStr(d){return d.toISOString().slice(0,10);}
+
+function initKey(){
+  const k=getK(),dot=document.getElementById('apiDot'),banner=document.getElementById('keyBanner');
+  if(k){dot.className='api-dot ok';if(banner)banner.classList.add('hidden');}
+  else{dot.className='api-dot';if(banner)banner.classList.remove('hidden');}
+  const sk=document.getElementById('setKey');if(sk)sk.value=k;
+}
+
+// ── TABS ──────────────────────────────────────────
+function goTab(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  btn.classList.add('on');
+  if(id==='monthly')renderCal();
+  if(id==='settings')updateInfo();
+}
+
+// ── KEY ───────────────────────────────────────────
+function saveKey(){
+  const k=document.getElementById('keyInp').value.trim();
+  if(!k.startsWith('sk-ant-')){toast('키 형식이 잘못됐어요 (sk-ant-...로 시작)','err');return;}
+  localStorage.setItem('sr_k',k); initKey(); toast('✅ API 키 저장 완료!','ok');
+}
+function saveKeySet(){
+  const k=document.getElementById('setKey').value.trim();
+  if(!k.startsWith('sk-ant-')){toast('키 형식을 확인하세요','err');return;}
+  localStorage.setItem('sr_k',k); initKey(); toast('✅ 저장 완료!','ok');
+}
+
+// ── AI COLLECT ────────────────────────────────────
+async function aiCollect(){
+  const k=getK();
+  if(!k){document.getElementById('keyBanner').classList.remove('hidden');document.getElementById('keyInp').focus();toast('API 키를 먼저 입력하세요','err');return;}
+  const date=document.getElementById('collectDate').value;
+  if(!date){toast('날짜를 선택하세요','err');return;}
+  const btn=document.getElementById('btnAI');
+  btn.disabled=true;btn.textContent='수집 중...';
+  document.getElementById('dailyContent').innerHTML=`<div class="aibox"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="aitxt">Claude AI가 ${date}<br>주식 데이터를 분석 중이에요...</div></div>`;
+  try{
+    const r=await fetchClaude(date,k);
+    db[date]=r; save();
+    document.getElementById('viewDate').value=date;
+    renderDay(date,r);
+    toast(`✅ ${date} 수집 완료!`,'ok');
+  }catch(e){
+    document.getElementById('dailyContent').innerHTML=`<div class="empty"><div class="eico">❌</div><div class="emsg">수집 실패</div><div class="esub">${e.message}</div></div>`;
+    toast('실패: '+e.message,'err');
+  }finally{btn.disabled=false;btn.innerHTML='🤖 AI수집';}
+}
+
+async function fetchClaude(date,apiKey){
+  const prompt=`한국 주식 전문가로서 ${date}의 코스피+코스닥 시장 데이터를 생성하세요.
+해당 날짜 전후 실제 시장 트렌드를 최대한 반영한 현실적 데이터를 만드세요.
+JSON만 출력:
+{"rise":[{"rank":1,"name":"종목명","rate":29.95,"vol":3461,"reason":"이유30자이내","keyword":"키워드"},...30개],"vol":[{"rank":1,"name":"종목명","rate":14.42,"vol":24603,"reason":"이유","keyword":"키워드"},...30개]}
+keyword는 반드시: 증권,제약바이오,반도체,우주항공,원전,SK그룹,지주사,로봇,방산,남북경협,2차전지,태양광,자동차,통신,개별이슈 중 하나
+rise[0].rate=25~30%, vol[0].vol=15000~30000억, 현실적 한국 종목명 사용`;
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+    body:JSON.stringify({model:'claude-opus-4-6',max_tokens:4000,messages:[{role:'user',content:prompt}]})
+  });
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`오류 ${res.status}`);}
+  const d=await res.json();
+  const txt=d.content[0]?.text||'';
+  const m=txt.match(/\{[\s\S]*\}/);
+  if(!m)throw new Error('응답 파싱 실패');
+  const p=JSON.parse(m[0]);
+  if(!p.rise?.length)throw new Error('데이터 없음');
+  return p;
+}
+
+// ── VIEW ──────────────────────────────────────────
+function loadView(){
+  const date=document.getElementById('viewDate').value;
+  const data=db[date];
+  if(!data){
+    document.getElementById('dailyContent').innerHTML=`<div class="empty"><div class="eico">📭</div><div class="emsg">${date||'날짜를 선택하세요'}</div><div class="esub">저장된 데이터가 없습니다</div></div>`;
+    document.getElementById('ameta').textContent='데이터 없음';return;
+  }
+  renderDay(date,data);
+}
+
+function renderDay(date,data){
+  const{rise=[],vol=[]}=data;
+  document.getElementById('ameta').textContent=`${date} · 상승률 ${rise.length} · 거래대금 ${vol.length}`;
+  const avg=rise.length?(rise.reduce((a,b)=>a+b.rate,0)/rise.length).toFixed(1):0;
+  const totV=vol.reduce((a,b)=>a+(b.vol||0),0);
+  const kf={};[...rise,...vol].forEach(s=>{if(s.keyword)kf[s.keyword]=(kf[s.keyword]||0)+1;});
+  const tk=Object.entries(kf).sort((a,b)=>b[1]-a[1])[0];
+  const integ=buildInteg(rise,vol);
+  document.getElementById('dailyContent').innerHTML=`
+    <div class="sgrid">
+      <div class="sbox r"><div class="slbl">평균 상승률</div><div class="sval r">+${avg}%</div></div>
+      <div class="sbox r"><div class="slbl">최고 상승</div><div class="sval sm">${rise[0]?.name||'-'} +${rise[0]?.rate||0}%</div></div>
+      <div class="sbox b"><div class="slbl">총 거래대금</div><div class="sval b">${totV.toLocaleString()}억</div></div>
+      <div class="sbox o"><div class="slbl">핵심 키워드</div><div class="sval sm" style="color:var(--gold)">${tk?tk[0]+' '+tk[1]+'건':'-'}</div></div>
+    </div>
+    ${buildList('📈 상승률 TOP',rise,'badge-r','TOP30')}
+    ${buildList('💰 거래대금 주도주',vol,'badge-b','거래대금')}
+    ${buildList('🔀 1·2단계 통합정리',integ,'badge-g','통합',true)}
+    ${buildKw(rise,vol)}`;
+}
+
+function buildList(title,stocks,bc,bt,integ=false){
+  const items=stocks.length?stocks.map((s,i)=>`
+    <div class="sitem">
+      <div class="srk ${i===0?'g1':i===1?'g2':i===2?'g3':''}">${s.rank||i+1}</div>
+      <div class="sinfo"><div class="snm">${s.name}</div><div class="srs">${s.reason||''}</div></div>
+      <div class="sright">
+        <div class="srt ${s.rate>=29.5?'lim':''}">${s.rate>=0?'+':''}${s.rate}%</div>
+        <div class="svl">${s.vol?s.vol.toLocaleString()+'억':''}</div>
+        <div>${kwTag(s.keyword)}</div>
+      </div>
+    </div>`).join(''):`<div class="empty" style="padding:18px"><div class="emsg">데이터 없음</div></div>`;
+  return `<div class="sec"><div class="sec-hd"><div class="sec-title">${title} <span class="badge ${bc}">${bt}</span></div><span class="sec-meta">${stocks.length}종목</span></div><div class="slist">${items}</div></div>`;
+}
+
+function buildInteg(rise,vol){
+  const m={};
+  rise.forEach(s=>{m[s.name]={...s,_s:'rise'};});
+  vol.forEach(s=>{if(m[s.name]){m[s.name].vol=s.vol;m[s.name]._s='both';}else m[s.name]={...s,_s:'vol'};});
+  return Object.values(m).sort((a,b)=>(a.keyword||'').localeCompare(b.keyword||'')||b.rate-a.rate).map((s,i)=>({...s,rank:i+1}));
+}
+
+function buildKw(rise,vol){
+  const kf={},kv={};
+  [...rise,...vol].forEach(s=>{if(!s.keyword)return;kf[s.keyword]=(kf[s.keyword]||0)+1;kv[s.keyword]=(kv[s.keyword]||0)+(s.vol||0);});
+  const e=Object.entries(kf).sort((a,b)=>b[1]-a[1]);
+  if(!e.length)return '';
+  const mx=e[0][1];
+  const rows=e.map(([kw,cnt],i)=>`<div class="kwrow"><span class="kwi">${i+1}</span>${kwTag(kw)}<div class="kwbg"><div class="kwfill" style="width:${(cnt/mx*100).toFixed(0)}%"></div></div><span class="kwcnt">${cnt}</span><span class="kwvol">${(kv[kw]||0).toLocaleString()}억</span></div>`).join('');
+  return `<div class="sec"><div class="sec-hd"><div class="sec-title">🏷️ 키워드 분석 <span class="badge badge-p">KEYWORD</span></div></div><div class="kwlist">${rows}</div></div>`;
+}
+
+// ── CALENDAR ──────────────────────────────────────
+function renderCal(){
+  const y=cm.getFullYear(),m=cm.getMonth();
+  document.getElementById('calMonth').textContent=`${y}년 ${m+1}월`;
+  const fw=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),off=fw===0?6:fw-1;
+  let html='';
+  for(let e=0;e<off%5;e++)html+=`<div class="calcell empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const wd=new Date(y,m,d).getDay();if(wd===0||wd===6)continue;
+    const ds=`${y}-${pad(m+1)}-${pad(d)}`,dd=db[ds],has=!!dd;
+    let kwh='';
+    if(has){
+      const kf={},kv={};
+      [...(dd.rise||[]),...(dd.vol||[])].forEach(s=>{if(!s.keyword)return;kf[s.keyword]=(kf[s.keyword]||0)+1;kv[s.keyword]=(kv[s.keyword]||0)+(s.vol||0);});
+      kwh=Object.entries(kf).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([kw])=>`<div class="calkwnm">${kw}</div>`).join('');
+    }
+    html+=`<div class="calcell ${has?'has':''}" ${has?`onclick="showSheet('${ds}')"`:''}><div class="cald">${d}</div>${kwh}</div>`;
+  }
+  document.getElementById('calBody').innerHTML=html;
+  // monthly kw
+  const prefix=`${y}-${pad(m+1)}`;
+  const kf={},kv={};
+  Object.entries(db).filter(([k])=>k.startsWith(prefix)).forEach(([,v])=>{
+    [...(v.rise||[]),...(v.vol||[])].forEach(s=>{if(!s.keyword)return;kf[s.keyword]=(kf[s.keyword]||0)+1;kv[s.keyword]=(kv[s.keyword]||0)+(s.vol||0);});
+  });
+  const e=Object.entries(kf).sort((a,b)=>b[1]-a[1]);const mx=e[0]?.[1]||1;
+  document.getElementById('kwMonthly').innerHTML=e.length
+    ?e.map(([kw,cnt],i)=>`<div class="kwrow"><span class="kwi">${i+1}</span>${kwTag(kw)}<div class="kwbg"><div class="kwfill" style="width:${(cnt/mx*100).toFixed(0)}%"></div></div><span class="kwcnt">${cnt}</span><span class="kwvol">${(kv[kw]||0).toLocaleString()}억</span></div>`).join('')
+    :`<div class="empty" style="padding:18px"><div class="emsg">이번 달 데이터 없음</div></div>`;
+}
+function chMonth(d){cm.setMonth(cm.getMonth()+d);renderCal();}
+
+// ── SHEET ─────────────────────────────────────────
+function showSheet(date){
+  const data=db[date];if(!data)return;
+  document.getElementById('sheetTitle').textContent=`📅 ${date}`;
+  const integ=buildInteg(data.rise||[],data.vol||[]);
+  document.getElementById('sheetBody').innerHTML=
+    buildList('📈 상승률',data.rise||[],'badge-r','TOP')+
+    buildList('💰 거래대금',data.vol||[],'badge-b','대금')+
+    buildList('🔀 통합',integ,'badge-g','통합');
+  document.getElementById('overlay').classList.add('on');
+}
+function closeSheet(e){if(!e||e.target===document.getElementById('overlay'))document.getElementById('overlay').classList.remove('on');}
+
+// ── MANUAL ────────────────────────────────────────
+const KWS=['증권','제약바이오','반도체','우주항공','원전','SK그룹','지주사','로봇','방산','남북경협','2차전지','태양광','자동차','통신','개별이슈'];
+function addRow(type){
+  const idx=type==='rise'?rC++:vC++;
+  const opts=KWS.map(k=>`<option value="${k}">${k}</option>`).join('');
+  const el=document.createElement('div');
+  el.innerHTML=`<div class="initem" id="${type}-i-${idx}">
+    <div class="inrow1">
+      <div><div class="mlbl">순위</div><input class="minp" type="number" id="${type}-rk-${idx}" value="${idx+1}"></div>
+      <div><div class="mlbl">종목명</div><input class="minp" type="text" id="${type}-nm-${idx}" placeholder="종목명"></div>
+      <div><div class="mlbl">등락%</div><input class="minp" type="number" step="0.01" id="${type}-rt-${idx}" placeholder="29.95"></div>
+      <div><div class="mlbl">거래(억)</div><input class="minp" type="number" id="${type}-vl-${idx}" placeholder="3461"></div>
+    </div>
+    <div class="inrow2">
+      <div><div class="mlbl">이유</div><input class="minp" type="text" id="${type}-rs-${idx}" placeholder="상승이유"></div>
+      <div><div class="mlbl">키워드</div><select class="msel" id="${type}-kw-${idx}"><option value="">-</option>${opts}</select></div>
+      <button class="rmbtn" onclick="document.getElementById('${type}-i-${idx}').remove()">✕</button>
+    </div>
+  </div>`;
+  document.getElementById(type+'Items').appendChild(el.firstElementChild);
+}
+function collectR(type){
+  return Array.from(document.querySelectorAll(`[id^="${type}-i-"]`)).map(row=>{
+    const i=row.id.replace(type+'-i-','');
+    const nm=document.getElementById(`${type}-nm-${i}`)?.value?.trim();
+    if(!nm)return null;
+    return{rank:parseInt(document.getElementById(`${type}-rk-${i}`)?.value)||0,name:nm,
+      rate:parseFloat(document.getElementById(`${type}-rt-${i}`)?.value)||0,
+      vol:parseInt(document.getElementById(`${type}-vl-${i}`)?.value)||0,
+      reason:document.getElementById(`${type}-rs-${i}`)?.value?.trim()||'',
+      keyword:document.getElementById(`${type}-kw-${i}`)?.value||''};
+  }).filter(Boolean).sort((a,b)=>a.rank-b.rank);
+}
+function saveManual(){
+  const date=document.getElementById('manDate').value;
+  if(!date){toast('날짜를 선택하세요','err');return;}
+  const rise=collectR('rise'),vol=collectR('vol');
+  if(!rise.length&&!vol.length){toast('종목을 입력하세요','err');return;}
+  db[date]={rise,vol};save();
+  document.getElementById('viewDate').value=date;
+  toast(`✅ ${date} 저장!`,'ok');
+}
+function clearManual(){document.getElementById('riseItems').innerHTML='';document.getElementById('volItems').innerHTML='';rC=0;vC=0;addRow('rise');addRow('vol');}
+function loadSample(){
+  document.getElementById('manDate').value='2026-02-13';
+  document.getElementById('riseItems').innerHTML='';document.getElementById('volItems').innerHTML='';rC=0;vC=0;
+  [{rank:1,name:'SK증권',rate:29.95,vol:3461,reason:'밸류업 기대+실적개선',keyword:'증권'},{rank:2,name:'유투바이오',rate:29.94,vol:1155,reason:'지주사 체제 전환',keyword:'제약바이오'},{rank:3,name:'현대ADM',rate:29.93,vol:1938,reason:'바이오 신약팀 기질 장벽 입증',keyword:'제약바이오'}].forEach(item=>{addRow('rise');const i=rC-1;document.getElementById(`rise-rk-${i}`).value=item.rank;document.getElementById(`rise-nm-${i}`).value=item.name;document.getElementById(`rise-rt-${i}`).value=item.rate;document.getElementById(`rise-vl-${i}`).value=item.vol;document.getElementById(`rise-rs-${i}`).value=item.reason;document.getElementById(`rise-kw-${i}`).value=item.keyword;});
+  [{rank:1,name:'미래에셋증권',rate:14.42,vol:24603,reason:'코스피 역대급 불장',keyword:'증권'},{rank:2,name:'SK이터닉스',rate:22.68,vol:9494,reason:'SK 신재생에너지 재편',keyword:'SK그룹'}].forEach(item=>{addRow('vol');const i=vC-1;document.getElementById(`vol-rk-${i}`).value=item.rank;document.getElementById(`vol-nm-${i}`).value=item.name;document.getElementById(`vol-rt-${i}`).value=item.rate;document.getElementById(`vol-vl-${i}`).value=item.vol;document.getElementById(`vol-rs-${i}`).value=item.reason;document.getElementById(`vol-kw-${i}`).value=item.keyword;});
+  toast('샘플 로드됨','info');
+}
+
+// ── SETTINGS ──────────────────────────────────────
+function updateInfo(){
+  const dates=Object.keys(db).sort();
+  const el=document.getElementById('dataInfo');
+  if(el)el.innerHTML=`저장된 날짜: ${dates.length}일<br>최신: ${dates[dates.length-1]||'없음'}<br>총 종목: ${Object.values(db).reduce((a,v)=>a+(v.rise?.length||0)+(v.vol?.length||0),0)}개`;
+}
+function exportJSON(){
+  const json=JSON.stringify(db,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`stockradar_${toStr(new Date())}.json`;a.click();
+  URL.revokeObjectURL(url);toast('📤 내보내기 완료','ok');
+}
+function clearAll(){if(!confirm('전체 삭제할까요?'))return;db={};save();loadView();toast('삭제 완료','info');}
+function deleteDay(){
+  const date=document.getElementById('viewDate').value;
+  if(!date||!db[date]){toast('데이터 없음','err');return;}
+  if(!confirm(`${date} 삭제?`))return;
+  delete db[date];save();loadView();toast(`🗑 ${date} 삭제`,'info');
+}
+
+// ── HELPER ────────────────────────────────────────
+function kwTag(kw){if(!kw)return '<span class="tag tag-def">-</span>';return `<span class="tag tag-${kw.toLowerCase().replace(/[^가-힣a-z0-9]/g,'')}">${kw}</span>`;}
+function toast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${type} show`;clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
